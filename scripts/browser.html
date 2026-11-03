@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0"><div id="root"></div>
+<script src="/vendor/react.js"></script><script src="/vendor/react-dom.js"></script><script src="/vendor/mui.js"></script>
+<script type="module">
+const { React, ReactDOM, MaterialUI } = window;
+window.locale = 'en_US';
+window.mode = 'light';
+const i18n = { language: window.locale };
+const API = async ({ url, method = 'get', data, params, signal }) => {
+  const target = new URL(url, location.origin);
+  for (const [key, value] of Object.entries(params || {})) target.searchParams.set(key, value);
+  const response = await fetch(target, { method: method.toUpperCase(), body: data ? JSON.stringify(data) : undefined, signal, headers: { 'Content-Type': 'application/json' } });
+  const envelope = await response.json();
+  if (!response.ok) { const error = new Error(envelope.message); error.response = { data: envelope }; throw error; }
+  return { data: envelope };
+};
+window.AIHubPluginSDK = { version: 2, React, MUI: MaterialUI, API, i18n, useTranslation: () => ({ i18n }), getPluginBases: () => ({ apiBase: '/api/plugin-bridge/monitor/api/v1', assetBase: '/api/plugin-bridge/monitor/assets' }) };
+const plugin = await import('/api/plugin-bridge/monitor/assets/plugin.js');
+const root = ReactDOM.createRoot(document.getElementById('root'));
+window.renderMonitor = (language = window.locale, mode = window.mode) => {
+  window.locale = language; window.mode = mode; i18n.language = language;
+  const theme = MaterialUI.createTheme({ palette: { mode }, typography: { fontFamily: 'Inter, system-ui, sans-serif' } });
+  root.render(React.createElement(MaterialUI.ThemeProvider, { theme }, React.createElement(React.Fragment, null,
+    React.createElement(MaterialUI.CssBaseline), React.createElement(MaterialUI.Box, { sx: { p: { xs: 1.5, md: 3 }, maxWidth: 1600, mx: 'auto' } }, React.createElement(plugin.Page)))));
+};
+window.unmountMonitor = () => root.unmount();
+window.renderMonitor();
+</script></body></html>

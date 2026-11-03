@@ -1,0 +1,8 @@
+# SDK identity/listener configuration. Managed installations inject these values.
+plugin:
+  id: monitor
+server:
+  address: "127.0.0.1:3013"
+host:
+  base_url: "http://127.0.0.1:3000"
+  secret: ""

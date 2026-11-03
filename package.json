@@ -1,0 +1,27 @@
+{
+  "name": "minitor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blueskyxi3/minitor.git"
+  },
+  "scripts": {
+    "build": "vite build --config web/vite.config.js",
+    "lint": "eslint web/src --ext .js,.jsx,.mjs",
+    "test": "node --test web/src/*.test.mjs"
+  },
+  "devDependencies": {
+    "@emotion/react": "11.14.0",
+    "@emotion/styled": "11.14.1",
+    "@mui/material": "5.18.0",
+    "eslint": "8.57.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "4.6.2",
+    "playwright": "1.62.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "vite": "7.1.11"
+  }
+}

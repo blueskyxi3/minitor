@@ -1,0 +1,111 @@
+# Standalone deployment example. Register its Service as an external SDK v2 plugin,
+# or let the existing plugin-deployer create equivalent single-replica resources.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-hub-monitor-runtime
+type: Opaque
+stringData:
+  config.yaml: |
+    plugin:
+      id: monitor
+    server:
+      address: "0.0.0.0:3013"
+    host:
+      base_url: "http://ai-hub-web:3000"
+      secret: "REPLACE_WITH_YOUR_SHARED_PLUGIN_SECRET_32_CHARS_OR_MORE"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-hub-monitor-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-hub-monitor
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ai-hub-monitor
+  template:
+    metadata:
+      labels:
+        app: ai-hub-monitor
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 20
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: monitor
+          image: ai-hub-monitor:1.0.0
+          env:
+            - name: AIHUB_PLUGIN_CONFIG
+              value: /run/aihub/config.yaml
+          ports:
+            - name: http
+              containerPort: 3013
+          volumeMounts:
+            - name: runtime
+              mountPath: /run/aihub
+              readOnly: true
+            - name: data
+              mountPath: /data/plugin
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 20
+      volumes:
+        - name: runtime
+          secret:
+            secretName: ai-hub-monitor-runtime
+            defaultMode: 0440
+        - name: data
+          persistentVolumeClaim:
+            claimName: ai-hub-monitor-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-hub-monitor
+spec:
+  selector:
+    app: ai-hub-monitor
+  ports:
+    - name: http
+      port: 3013
+      targetPort: http

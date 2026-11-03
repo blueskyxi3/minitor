@@ -1,0 +1,17 @@
+services:
+  monitor:
+    image: ai-hub-monitor:1.0.0
+    build: .
+    restart: unless-stopped
+    user: "10001:10001"
+    ports:
+      - "127.0.0.1:3013:3013"
+    environment:
+      MONITOR_SERVER_ADDRESS: "0.0.0.0:3013"
+      MONITOR_HOST_BASE_URL: "${MONITOR_HOST_BASE_URL:?Set a host URL reachable from the container}"
+      MONITOR_HOST_SECRET: "${MONITOR_HOST_SECRET:?Set the shared plugin secret (32+ characters)}"
+    volumes:
+      - monitor-data:/data/plugin
+    stop_grace_period: 20s
+volumes:
+  monitor-data:

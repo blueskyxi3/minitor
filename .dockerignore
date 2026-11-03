@@ -1,0 +1,14 @@
+.git
+node_modules
+dist
+data
+web/build
+internal/vm/bundle/*.gz
+internal/vm/bundle/*.json
+config.yaml
+host-config.yaml
+__pycache__
+.gitnexus
+.env
+.DS_Store
+*.log

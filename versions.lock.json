@@ -1,0 +1,17 @@
+{
+  "version": "v1.155.0",
+  "platforms": {
+    "darwin-arm64": {
+      "archive_sha256": "d0d79e85f1d001530f63449847839bec056bc3d93b547c03005faf53a61d8c48",
+      "binary_sha256": "d5bb8869bfe53a3832e7f826a2090ce6c1832afc59d1ab1b66b2d22b13d9dfc6"
+    },
+    "linux-amd64": {
+      "archive_sha256": "7180e65913d55ab99c0be8f4a3ad17a0fafe5598a21ff6327fecba3190d7b176",
+      "binary_sha256": "aca3c49816db88c0e48012772fcf2a94eb66aaccd925b35d397b8b6f7f40fb43"
+    },
+    "linux-arm64": {
+      "archive_sha256": "c6af3f35c597e2cb45c9bbb7a7fc1638c6f1ec10a8198c2861aa14531bf439d7",
+      "binary_sha256": "5024a2a13237fbfbf7b276e60b7942cf0efb3bea5f53b5ca4b690e4d0719ca58"
+    }
+  }
+}

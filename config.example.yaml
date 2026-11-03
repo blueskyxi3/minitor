@@ -1,0 +1,18 @@
+version: 1
+
+discovery:
+  # Use a read-only ACL restricted to ai-hub:monitor:instances and ai-hub:monitor:instance:*.
+  redis_url: ""
+
+metrics:
+  username: ""
+  password: ""
+
+collection:
+  interval_seconds: 15
+  timeout_seconds: 5
+
+storage:
+  # Relative to THIS configuration file, never the executable or current directory.
+  data_path: "./victoria-metrics-data"
+  retention_days: 30
