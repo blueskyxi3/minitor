@@ -2,7 +2,7 @@
   "manifest": {
     "id": "monitor",
     "name": "性能监控",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "sdk_version": 2,
     "extensions": ["console.navigation"],
     "entry": "/assets/plugin.js",
@@ -11,9 +11,9 @@
   "description": "内置 VictoriaMetrics，展示网关、模型和 Billing Worker 的性能与采集状态。",
   "modes": ["process", "docker", "kubernetes"],
   "artifacts": {
-    "darwin-arm64": "/opt/plugin-packages/monitor-1.0.0-darwin-arm64.zip",
-    "linux-amd64": "/opt/plugin-packages/monitor-1.0.0-linux-amd64.zip",
-    "linux-arm64": "/opt/plugin-packages/monitor-1.0.0-linux-arm64.zip"
+    "darwin-arm64": "https://github.com/blueskyxi3/minitor/releases/download/0.0.1/monitor-0.0.1-darwin-arm64.zip",
+    "linux-amd64": "https://github.com/blueskyxi3/minitor/releases/download/0.0.1/monitor-0.0.1-linux-amd64.zip",
+    "linux-arm64": "https://github.com/blueskyxi3/minitor/releases/download/0.0.1/monitor-0.0.1-linux-arm64.zip"
   },
   "env_prefix": "MONITOR",
   "rollback_compatible": true

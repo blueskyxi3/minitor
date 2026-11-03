@@ -17,4 +17,4 @@ lint:
 	go vet ./internal/... .
 
 image:
-	docker build -t ai-hub-monitor:1.0.0 .
+	docker build -t ai-hub-monitor:0.0.1 .

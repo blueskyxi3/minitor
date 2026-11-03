@@ -23,7 +23,7 @@ npx playwright install chromium   # 可选浏览器测试的开发依赖
 python3 scripts/storage_smoke.py
 python3 scripts/smoke.py --redis-url redis://127.0.0.1:16385/0 --browser
 python3 scripts/smoke.py --redis-url redis://127.0.0.1:16385/0 --faults
-docker build -t ai-hub-monitor:1.0.0 .
+docker build -t ai-hub-monitor:0.0.1 .
 python3 scripts/docker_smoke.py
 ```
 
