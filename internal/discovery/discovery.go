@@ -2,21 +2,15 @@ package discovery
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/url"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-
 	"github.com/blueskyxi3/minitor/internal/config"
 	"github.com/blueskyxi3/minitor/internal/vm"
 )
-
-const RegistryKey = "ai-hub:monitor:instances"
-const InstancePrefix = "ai-hub:monitor:instance:"
 
 type Instance struct {
 	ID                string `json:"id"`
@@ -46,11 +40,12 @@ type Snapshot struct {
 type TargetWriter interface{ WriteTargets([]vm.Target) error }
 
 type Discoverer struct {
-	Settings *config.Store
-	Writer   TargetWriter
-	mu       sync.RWMutex
-	refresh  sync.Mutex
-	snapshot Snapshot
+	ReadHostInstances func(context.Context) ([]Instance, error)
+	Settings          *config.Store
+	Writer            TargetWriter
+	mu                sync.RWMutex
+	refresh           sync.Mutex
+	snapshot          Snapshot
 }
 
 func New(store *config.Store, writer TargetWriter) *Discoverer {
@@ -73,11 +68,15 @@ func (d *Discoverer) Refresh(ctx context.Context) error {
 	var targets []vm.Target
 	var err error
 	if !result.Configured {
-		result.Error = "configure Redis discovery and metrics credentials"
+		result.Error = "configure metrics credentials; instance discovery follows the host"
 	} else {
-		result.Instances, err = readInstances(ctx, s)
+		if d.ReadHostInstances == nil {
+			err = errors.New("host instance reader is unavailable")
+		} else {
+			result.Instances, err = d.ReadHostInstances(ctx)
+		}
 		if err != nil {
-			result.Error = "Redis instance discovery failed; check its address and read-only ACL"
+			result.Error = "host instance discovery failed; check host Redis, host version and monitor service identity"
 		} else {
 			targets, result.Instances, result.Complete = BuildTargets(result.Instances)
 			result.LastSuccessAt = time.Now().Unix()
@@ -111,50 +110,6 @@ func (d *Discoverer) Run(ctx context.Context) {
 		case <-timer.C:
 		}
 	}
-}
-
-func readInstances(ctx context.Context, s config.Settings) ([]Instance, error) {
-	options, err := redis.ParseURL(s.Discovery.RedisURL)
-	if err != nil {
-		return nil, err
-	}
-	timeout := time.Duration(s.Collection.TimeoutSeconds) * time.Second
-	options.DialTimeout, options.ReadTimeout, options.WriteTimeout = timeout, timeout, timeout
-	options.PoolSize, options.MaxRetries, options.DisableIdentity = 2, -1, true
-	client := redis.NewClient(options)
-	defer client.Close()
-	ids, err := client.SMembers(ctx, RegistryKey).Result()
-	if err != nil {
-		return nil, err
-	}
-	if len(ids) > 1000 {
-		return nil, errors.New("instance registry exceeds 1000 entries")
-	}
-	if len(ids) == 0 {
-		return []Instance{}, nil
-	}
-	keys := make([]string, len(ids))
-	for n, id := range ids {
-		keys[n] = InstancePrefix + id
-	}
-	values, err := client.MGet(ctx, keys...).Result()
-	if err != nil {
-		return nil, err
-	}
-	instances := make([]Instance, 0, len(values))
-	for n, value := range values {
-		if value == nil {
-			continue
-		} // Expired heartbeat, not a zero-valued instance.
-		body, ok := value.(string)
-		var instance Instance
-		if !ok || json.Unmarshal([]byte(body), &instance) != nil || instance.ID != ids[n] {
-			instances = append(instances, Instance{ID: ids[n], Error: "invalid heartbeat record"})
-			continue
-		}
-		instances = append(instances, instance)
-	}
-	return instances, nil
 }
 
 func BuildTargets(instances []Instance) ([]vm.Target, []Instance, bool) {

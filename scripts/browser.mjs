@@ -16,6 +16,31 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('article svg path[d]').length >= 4 && !document.querySelector('.MuiSkeleton-root'));
   };
   await waitForCharts();
+  const geometry = await page.evaluate(() => {
+    const field = document.querySelector('.MuiAutocomplete-root .MuiOutlinedInput-root').getBoundingClientRect();
+    const button = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Refresh');
+    const rect = button.getBoundingClientRect();
+    return { fieldHeight: field.height, buttonHeight: rect.height, aligned: Math.abs(field.y - rect.y) < 1, border: getComputedStyle(button).borderTopColor };
+  });
+  assert.equal(geometry.fieldHeight, 36);
+  assert.equal(geometry.buttonHeight, 36);
+  assert.ok(geometry.aligned, 'refresh button is not aligned with the filters');
+  const channels = geometry.border.replace('rgba(', '').replace('rgb(', '').replace(')', '').split(',').slice(0, 3).map(Number);
+  assert.ok(Math.max(...channels) - Math.min(...channels) < 10, 'refresh border is not neutral gray');
+  assert.equal(await page.locator('.MuiAutocomplete-popupIndicator').count(), 0);
+  for (const [name, query, expected] of [
+    ['Instance', 'SMOKE-', /monitor-smoke-/],
+    ['Model', ' DEL-A ', /model-a/],
+    ['Channel', ' 1 ', /^1$/],
+    ['API mode', ' CHAT_COMP ', /chat_completions/]
+  ]) {
+    const field = page.getByRole('combobox', { name, exact: true });
+    await field.fill(query);
+    await page.getByRole('option').filter({ hasText: expected }).first().waitFor();
+    await page.keyboard.press('Escape');
+    await field.fill('');
+    await field.blur();
+  }
   await page.screenshot({ path: new URL('gateway-light.png', root).pathname, fullPage: true });
   await page.getByRole('tab', { name: 'Models', exact: true }).click();
   await page.getByText('model-a', { exact: true }).first().waitFor();
@@ -35,7 +60,8 @@ try {
   }
   await page.getByRole('tab', { name: 'Configuration', exact: true }).click();
   await page.getByText('Resolved data directory', { exact: true }).waitFor();
-  assert.equal(await page.locator('input[type=password]').count(), 2);
+  assert.equal(await page.locator('input[type=password]').count(), 1);
+  assert.equal(await page.getByRole('textbox', { name: 'Redis connection URL', exact: true }).count(), 0);
   await page.screenshot({ path: new URL('settings-dark.png', root).pathname, fullPage: true });
   await page.getByRole('tab', { name: 'Collection status' }).click();
   await page.getByText('fixture-0', { exact: true }).waitFor();

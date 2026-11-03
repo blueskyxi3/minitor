@@ -158,10 +158,11 @@ def main():
     redis.command("ACL", "SETUSER", reader, "on", ">" + password, "~ai-hub:monitor:instances", "~ai-hub:monitor:instance:*", "+@connection", "+smembers", "+mget")
     original = urllib.parse.urlsplit(args.redis_url)
     redis_url = urllib.parse.urlunsplit((original.scheme, f"{reader}:{password}@{original.hostname}:{original.port or 6379}", original.path, "", ""))
+    host_redis = Redis(redis_url)
     ids, servers = [], []
     stop = threading.Event()
     process = None
-    state = {"port": 0, "access": "manage", "requests": []}
+    state = {"port": 0, "access": "manage", "requests": [], "host_reads": 0}
     temporary = tempfile.TemporaryDirectory(prefix="ai-hub-monitor-smoke-")
     temp = pathlib.Path(temporary.name)
 
@@ -173,6 +174,19 @@ def main():
             self.route()
 
         def route(self):
+            if self.path == "/api/plugin-host/monitor/instances":
+                if self.command != "GET" or self.headers.get("X-AIHub-Plugin-ID") != "monitor" or self.headers.get("X-AIHub-Plugin-Secret") != SECRET:
+                    self.send(json.dumps({"success": False}), 401)
+                    return
+                state["host_reads"] += 1
+                try:
+                    names = host_redis.command("SMEMBERS", "ai-hub:monitor:instances")
+                    values = host_redis.command("MGET", *["ai-hub:monitor:instance:" + name.decode() for name in names]) if names else []
+                    rows = [json.loads(value) for value in values if value is not None]
+                    self.send(json.dumps({"success": True, "data": {"instances": rows}}))
+                except (OSError, RuntimeError):
+                    self.send(json.dumps({"success": False, "message": "host Redis registry unavailable"}), 503)
+                return
             if self.path == "/api/user/self":
                 assert self.headers.get("Authorization") == "Bearer smoke-delegation"
                 self.send(json.dumps({"success": True, "data": {"id": 9, "role": 100, "page_access": {"monitor": state["access"]}}}))
@@ -237,7 +251,7 @@ def main():
                 stop.wait(5)
         heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
         heartbeat_thread.start()
-        settings = {"version": 1, "discovery": {"redis_url": redis_url}, "metrics": {"username": "metrics", "password": METRICS_PASSWORD}, "collection": {"interval_seconds": 5, "timeout_seconds": 1}, "storage": {"data_path": "./custom-tsdb", "retention_days": 30}}
+        settings = {"version": 1, "metrics": {"username": "metrics", "password": METRICS_PASSWORD}, "collection": {"interval_seconds": 5, "timeout_seconds": 1}, "storage": {"data_path": "./custom-tsdb", "retention_days": 30}}
         settings_path = temp / "settings/config.yaml"
         settings_path.parent.mkdir()
         settings_path.write_text(json.dumps(settings))
@@ -298,6 +312,8 @@ def main():
         filtered = call("/series?scope=model&model_name=model-a")
         assert not next(m for m in filtered["metrics"] if m["key"] == "http_rps")["supported"]
         configuration = call("/settings")
+        assert configuration["discovery"]["source"] == "host" and state["host_reads"] > 0
+        assert not json.loads(settings_path.read_text()).get("discovery", {}).get("redis_url")
         assert configuration["resolved_data_path"] == str(settings_path.parent / "custom-tsdb")
         assert METRICS_PASSWORD not in json.dumps(configuration) and password not in json.dumps(configuration)
         call("/settings", {"metrics": {"username": "metrics"}})
@@ -342,10 +358,17 @@ def main():
             wait_status(lambda status: status["complete"])
             for n in [0, args.instances]:
                 sources[n]["observed_at"] = int(time.time()) - 300
-            wait_status(lambda status: any(row["health"] == "stale" for row in status["instances"]))
-            stale = call("/series?scope=billing")
-            backlog = next(m for m in stale["metrics"] if m["key"] == "billing_backlog")
-            assert backlog["summary"]["value"] is None and backlog["stale"], "expired global backlog was displayed as current"
+            # Each worker is scraped independently. A fresh peer remains a valid
+            # global observer until every worker's stale sample has been collected.
+            wait_status(lambda status: all(any(row["id"] == ids[n] and row["health"] == "stale" for row in status["instances"]) for n in [0, args.instances]))
+            deadline = time.monotonic() + 30
+            while True:
+                stale = call("/series?scope=billing")
+                backlog = next(m for m in stale["metrics"] if m["key"] == "billing_backlog")
+                if backlog["summary"]["value"] is None and backlog["stale"]:
+                    break
+                assert time.monotonic() < deadline, ("expired global backlog was displayed as current", backlog)
+                time.sleep(1)
             for source in sources:
                 source.pop("observed_at", None)
             wait_status(lambda status: status["complete"])

@@ -49,11 +49,11 @@ SDK 运行配置由宿主注入，字段为 `plugin.id/server.address/host.base_
 - 修改数据保留期会重启内置数据库；首期插件升级保持相同数据库版本，变更数据库版本前单独验证存储格式兼容性和备份。
 - 数据保留默认 30 天，过期数据由数据库后台清理，并非到期瞬间回收磁盘。不要将数据库放进被升级替换的程序版本目录。
 
-`GET/PUT /api/v1/settings` 只对拥有宿主监控权限的 root 开放，采用原子写入与 0600 文件权限。Redis URL、指标密码不返回明文，PUT 省略敏感字段表示保留；`storage.data_path` 不接受在线修改。不要把真实配置、凭据和数据库提交到 Git。
+`GET/PUT /api/v1/settings` 只对拥有宿主监控权限的 root 开放，采用原子写入与 0600 文件权限。指标密码不返回明文，PUT 省略敏感字段表示保留；`storage.data_path` 不接受在线修改。不要把真实配置、凭据和数据库提交到 Git。
 
 ## 发现与认证
 
-插件只读 `ai-hub:monitor:instances` 与 `ai-hub:monitor:instance:*`，不调用 SQL、不清理注册、不写宿主 Redis。Redis ACL 示例应限制这些键并允许连接认证所需命令、`SMEMBERS`、`MGET`；使用与宿主相同的 Redis 数据库。Redis 故障清空当前目标文件并明确报告发现失败，保留历史数据，恢复后重新发现，不以旧目标、内存或 SQL 替代发现。
+插件通过 `GET /api/plugin-host/monitor/instances` 请求宿主读取实例注册；宿主使用自身已经初始化的 Redis 客户端及数据库编号，仅执行固定注册键上的 `SMEMBERS`、`MGET`。插件不需要 Redis 地址或密码，也不直接连接 Redis。此接口只允许已启用且授权有效的 `monitor` SDK v2 服务身份，返回必要的实例元数据，不提供通用 Redis 键访问。浏览器仍只访问插件业务 API。宿主 Redis 故障或接口不可用时清空当前采集目标并报告异常，不补入当前实例、不改用缓存或 SQL。旧 `discovery.redis_url` 字段仅为兼容旧文件保留，已不参与发现；宿主和插件需一起更新后生效。
 
 实例的 `metrics_url` 必须指向自身 `/api/metrics`，不能填写随机负载均衡地址。所有目标保持相同 `METRICS_USER/METRICS_PASSWORD`。独立 billing/route worker 需要包含认证指标别名和注册地址的新版本。API 与 embedded worker 共进程只采集一次，纯 route worker 和 plugin-deployer 不参与本插件的采集。
 

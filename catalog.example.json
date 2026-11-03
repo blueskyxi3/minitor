@@ -9,6 +9,8 @@
     "navigation": { "group": "OBSERVABILITY" }
   },
   "description": "内置 VictoriaMetrics，展示网关、模型和 Billing Worker 的性能与采集状态。",
+  "logo": "https://raw.githubusercontent.com/blueskyxi3/minitor/main/plugin-logos/monitor.png",
+  "background": "https://raw.githubusercontent.com/blueskyxi3/minitor/main/plugin-backgrounds/monitor.png",
   "modes": ["process", "docker", "kubernetes"],
   "artifacts": {
     "darwin-arm64": "https://github.com/blueskyxi3/minitor/releases/download/0.0.1/monitor-0.0.1-darwin-arm64.zip",

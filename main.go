@@ -95,6 +95,9 @@ func run() error {
 		return err
 	}
 	discoverer := discovery.New(settings, engine)
+	discoverer.ReadHostInstances = func(ctx context.Context) ([]discovery.Instance, error) {
+		return host.MonitorInstances(ctx, secret)
+	}
 	service := &api.Server{Secret: secret, Host: host, Settings: settings, Discovery: discoverer, Engine: engine, Manifest: manifest, Assets: assets}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

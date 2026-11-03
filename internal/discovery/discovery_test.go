@@ -2,6 +2,7 @@ package discovery_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -70,5 +71,41 @@ func TestRedisFailureClearsTargetsWithoutExposingCredentials(t *testing.T) {
 	snapshot := d.Snapshot()
 	if snapshot.Complete || snapshot.Error == "" || strings.Contains(snapshot.Error, "must-not-leak") {
 		t.Fatal("invalid failure snapshot")
+	}
+}
+
+func TestHostDiscoveryNeedsNoRedisSettingsAndNeverUsesLegacyURL(t *testing.T) {
+	store, err := config.Open(filepath.Join(t.TempDir(), "config.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := store.Get()
+	s.Metrics.Username, s.Metrics.Password = "metrics", "secret"
+	s.Discovery.RedisURL = "redis://unused:must-not-leak@127.0.0.1:1/0"
+	if err := store.Save(s); err != nil {
+		t.Fatal(err)
+	}
+	w := &writer{}
+	d := discovery.New(store, w)
+	fail := false
+	d.ReadHostInstances = func(context.Context) ([]discovery.Instance, error) {
+		if fail {
+			return nil, errors.New("host credential must-not-leak")
+		}
+		return []discovery.Instance{{ID: "master", MetricsURL: "http://192.0.2.1:3000/api/metrics"}}, nil
+	}
+	if err := d.Refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !d.Snapshot().Configured || !d.Snapshot().Complete || len(w.targets) != 1 {
+		t.Fatal("host discovery required a plugin Redis URL")
+	}
+	lastSuccess := d.Snapshot().LastSuccessAt
+	fail = true
+	if err := d.Refresh(context.Background()); err == nil {
+		t.Fatal("host failure was swallowed")
+	}
+	if len(w.targets) != 0 || d.Snapshot().Complete || d.Snapshot().LastSuccessAt != lastSuccess || strings.Contains(d.Snapshot().Error, "must-not-leak") {
+		t.Fatal("failed host discovery retained targets or exposed credentials")
 	}
 }

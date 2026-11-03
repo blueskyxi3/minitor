@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,10 +15,11 @@ import (
 )
 
 type Settings struct {
-	Version   int `yaml:"version" json:"version"`
+	Version int `yaml:"version" json:"version"`
+	// Deprecated RedisURL is accepted for 0.0.1 files; discovery always uses the host.
 	Discovery struct {
 		RedisURL string `yaml:"redis_url" json:"redis_url"`
-	} `yaml:"discovery" json:"discovery"`
+	} `yaml:"discovery,omitempty" json:"discovery"`
 	Metrics struct {
 		Username string `yaml:"username" json:"username"`
 		Password string `yaml:"password" json:"password"`
@@ -52,17 +52,11 @@ func (s Settings) Validate() error {
 	if s.Storage.DataPath == "" || s.Storage.RetentionDays < 1 || s.Storage.RetentionDays > 3650 {
 		return errors.New("storage path is required; retention must be 1–3650 days")
 	}
-	if s.Discovery.RedisURL != "" {
-		u, err := url.Parse(s.Discovery.RedisURL)
-		if err != nil || (u.Scheme != "redis" && u.Scheme != "rediss") || u.Host == "" || u.Fragment != "" {
-			return errors.New("invalid Redis URL")
-		}
-	}
 	return nil
 }
 
 func (s Settings) Configured() bool {
-	return s.Discovery.RedisURL != "" && s.Metrics.Username != "" && s.Metrics.Password != ""
+	return s.Metrics.Username != "" && s.Metrics.Password != ""
 }
 
 type Store struct {
@@ -172,13 +166,9 @@ func WritePrivate(path string, body []byte) error {
 
 func (s *Store) Public() map[string]any {
 	v := s.Get()
-	endpoint := ""
-	if u, err := url.Parse(v.Discovery.RedisURL); err == nil && u.Host != "" {
-		endpoint = u.Scheme + "://" + u.Host + u.EscapedPath()
-	}
 	return map[string]any{
 		"version": v.Version, "configured": v.Configured(),
-		"discovery":  map[string]any{"redis_endpoint": endpoint, "redis_configured": v.Discovery.RedisURL != ""},
+		"discovery":  map[string]any{"source": "host"},
 		"metrics":    map[string]any{"username": v.Metrics.Username, "password_configured": v.Metrics.Password != ""},
 		"collection": v.Collection, "storage": v.Storage,
 		"resolved_data_path": s.DataPath(), "config_path": s.Path,

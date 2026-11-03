@@ -7,7 +7,7 @@
 - SDK 插件 ID、程序名和 ZIP 前缀保持 `monitor`。仓库名称使用 `minitor`。
 - Go 模块为 `github.com/blueskyxi3/minitor`；页面使用宿主注入的 React/MUI/SDK，不打包第二份运行时。
 - 浏览器业务请求只能使用 `sdk.getPluginBases('monitor').apiBase` 和 `sdk.API`，由宿主通用插件代理转发。宿主身份验证和当前用户权限校验必须保留。
-- 采集与存储参数只由插件自己的业务 `config.yaml` 管理，SDK 运行配置与之分离。相对数据路径基于业务配置所在目录。
+- 实例发现固定通过宿主 `/api/plugin-host/monitor/instances` 读取宿主 Redis 注册投影；不下发 Redis 凭据、不提供通用键访问。采集与存储参数由插件自己的业务 `config.yaml` 管理，SDK 运行配置与之分离。相对数据路径基于业务配置所在目录。
 - VictoriaMetrics 固定版本及 SHA-256 记录在 `versions.lock.json`，仅构建时下载，运行时不下载。数据目录独占，不自动迁移或回退目录。
 - 缺失/过期观测保持空值；分位数先聚合桶再计算；Billing 全局快照取最新有效观测，不按 worker 求和。
 

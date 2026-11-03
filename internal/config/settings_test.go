@@ -35,7 +35,7 @@ func TestConfigurationPathsAndPrivatePersistence(t *testing.T) {
 		t.Fatalf("configuration permissions: %v", info.Mode())
 	}
 	public := store.Public()
-	if strings.Contains(public["discovery"].(map[string]any)["redis_endpoint"].(string), "redis-secret") {
+	if public["discovery"].(map[string]any)["source"] != "host" {
 		t.Fatal("Redis secret leaked")
 	}
 	if _, ok := public["metrics"].(map[string]any)["password"]; ok {

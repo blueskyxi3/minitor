@@ -4,7 +4,7 @@ import { paths, requestParams, formatValue } from './data.mjs';
 const sdk = window.AIHubPluginSDK;
 const React = sdk.React;
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
-const { Alert, Autocomplete, Box, Button, Chip, FormControlLabel, MenuItem, Paper, Skeleton, Stack, Switch, Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useTheme } = sdk.MUI;
+const { createFilterOptions, Alert, Autocomplete, Box, Button, Chip, FormControlLabel, MenuItem, Paper, Skeleton, Stack, Switch, Tab, Tabs, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useTheme } = sdk.MUI;
 
 async function request(path, config = {}) {
   const bases = sdk.getPluginBases('monitor');
@@ -13,6 +13,8 @@ async function request(path, config = {}) {
   if (!response.data?.success) throw new Error(response.data?.message || 'Request failed');
   return response.data.data;
 }
+
+const filterChoices = createFilterOptions({ matchFrom: 'any', ignoreCase: true, trim: true });
 
 export function navigation() {
   const t = translator(sdk.i18n.language);
@@ -47,7 +49,7 @@ export function Page({ path = '' }) {
 }
 
 function SearchFilter({ value, values = [], onChange, placeholder }) {
-  return <Autocomplete size="small" options={values} value={value || null} onChange={(_, next) => onChange(next || '')} sx={{ minWidth: 150, flex: '1 1 150px', maxWidth: 280 }} renderInput={(params) => <TextField {...params} placeholder={placeholder} inputProps={{ ...params.inputProps, 'aria-label': placeholder }} />} />;
+  return <Autocomplete size="small" forcePopupIcon={false} openOnFocus autoHighlight filterOptions={filterChoices} options={values} value={value || null} onChange={(_, next) => onChange(next || '')} sx={{ minWidth: 150, flex: '1 1 150px', maxWidth: 280 }} renderInput={(params) => <TextField {...params} placeholder={placeholder} inputProps={{ ...params.inputProps, 'aria-label': placeholder }} />} />;
 }
 
 function Dashboard({ scope, t, language, canConfigure, onConfigure }) {
@@ -85,7 +87,7 @@ function Dashboard({ scope, t, language, canConfigure, onConfigure }) {
   const histograms = data?.metrics.filter((m) => m.histogram) || [];
   const scalars = data?.metrics.filter((m) => !m.histogram) || [];
   return <Stack spacing={2}>
-    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+    <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1, borderColor: 'divider', '& .MuiOutlinedInput-root': { height: 36 }, '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' } }}>
       <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
         <TextField select size="small" value={filters.range} onChange={(e) => update('range', Number(e.target.value))} inputProps={{ 'aria-label': t('range') }} sx={{ minWidth: 150 }}>
           {[[3600, 'one_hour'], [21600, 'six_hours'], [86400, 'one_day'], [604800, 'seven_days'], [2592000, 'thirty_days']].map(([value, key]) => <MenuItem key={value} value={value}>{t(key)}</MenuItem>)}
@@ -101,7 +103,7 @@ function Dashboard({ scope, t, language, canConfigure, onConfigure }) {
         </>}
         {scope === 'billing' && <SearchFilter value={filters.stage} values={options.stage} onChange={(v) => update('stage', v)} placeholder={t('stage')} />}
         <FormControlLabel sx={{ mr: 0 }} control={<Switch size="small" checked={filters.live} onChange={(_, v) => update('live', v)} />} label={t('live')} />
-        <Button variant="outlined" disabled={loading} onClick={load}>{t('refresh')}</Button>
+        <Button variant="outlined" size="small" disabled={loading} onClick={load} sx={{ height: 36, minHeight: 36, borderColor: 'divider', color: 'text.primary', '&:hover': { borderColor: 'text.disabled', bgcolor: 'action.hover' } }}>{t('refresh')}</Button>
       </Stack>
       {!filters.live && <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mt: 1.5 }}>
         {['start', 'end'].map((key) => <TextField key={key} size="small" type="datetime-local" value={filters[key]} onChange={(e) => update(key, e.target.value)} inputProps={{ 'aria-label': t(key) }} />)}
@@ -200,7 +202,7 @@ function Status({ t }) {
 
 function Settings({ t }) {
   const [settings, setSettings] = useState(null);
-  const [form, setForm] = useState({ redis: '', username: '', password: '', interval: 15, timeout: 5, retention: 30 });
+  const [form, setForm] = useState({ username: '', password: '', interval: 15, timeout: 5, retention: 30 });
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -208,19 +210,19 @@ function Settings({ t }) {
   async function save() {
     setBusy(true); setError(''); setSaved(false);
     try {
-      const payload = { metrics: { username: form.username, ...(form.password ? { password: form.password } : {}) }, collection: { interval_seconds: Number(form.interval), timeout_seconds: Number(form.timeout) }, storage: { retention_days: Number(form.retention) }, ...(form.redis ? { discovery: { redis_url: form.redis } } : {}) };
-      const data = await request('/settings', { method: 'put', data: payload }); setSettings(data); setForm((old) => ({ ...old, redis: '', password: '' })); setSaved(true);
+      const payload = { metrics: { username: form.username, ...(form.password ? { password: form.password } : {}) }, collection: { interval_seconds: Number(form.interval), timeout_seconds: Number(form.timeout) }, storage: { retention_days: Number(form.retention) } };
+      const data = await request('/settings', { method: 'put', data: payload }); setSettings(data); setForm((old) => ({ ...old, password: '' })); setSaved(true);
     } catch (e) { setError(e.response?.data?.message || e.message); } finally { setBusy(false); }
   }
   return <Paper variant="outlined" sx={{ p: 2, maxWidth: 960 }}>
     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{t('settings_intro')}</Typography>
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-      {['redis', 'username', 'password', 'interval', 'timeout', 'retention'].map((key) => <Box key={key}>
+      {['username', 'password', 'interval', 'timeout', 'retention'].map((key) => <Box key={key}>
         <Typography variant="caption" component="div" color="text.secondary" sx={{ mb: 0.5 }}>{t(key)}</Typography>
-        <TextField fullWidth size="small" type={['redis', 'password'].includes(key) ? 'password' : ['interval', 'timeout', 'retention'].includes(key) ? 'number' : 'text'} value={form[key]} placeholder={['redis', 'password'].includes(key) ? t('keep_secret') : t(key)} inputProps={{ 'aria-label': t(key) }} onChange={(e) => setForm((old) => ({ ...old, [key]: e.target.value }))} autoComplete="off" />
+        <TextField fullWidth size="small" type={(key === 'password') ? 'password' : ['interval', 'timeout', 'retention'].includes(key) ? 'number' : 'text'} value={form[key]} placeholder={(key === 'password') ? t('keep_secret') : t(key)} inputProps={{ 'aria-label': t(key) }} onChange={(e) => setForm((old) => ({ ...old, [key]: e.target.value }))} autoComplete="off" />
       </Box>)}
     </Box>
-    {settings && <Box sx={{ mt: 2, overflowWrap: 'anywhere' }}><Typography variant="caption" color="text.secondary">{t('config_path')}</Typography><Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>{settings.config_path}</Typography><Typography variant="caption" color="text.secondary">{t('data_path')}</Typography><Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{settings.resolved_data_path}</Typography><Typography variant="caption" color="text.secondary">{settings.discovery.redis_endpoint}</Typography></Box>}
+    {settings && <Box sx={{ mt: 2, overflowWrap: 'anywhere' }}><Typography variant="caption" color="text.secondary">{t('config_path')}</Typography><Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>{settings.config_path}</Typography><Typography variant="caption" color="text.secondary">{t('data_path')}</Typography><Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{settings.resolved_data_path}</Typography><Typography variant="caption" color="text.secondary">{t('host_discovery')}</Typography></Box>}
     <Box sx={{ minHeight: 50, mt: 1 }}>{error && <Alert severity="error">{error}</Alert>}{saved && <Alert severity="success">{t('saved')}</Alert>}</Box>
     <Button variant="outlined" disabled={!settings || busy} onClick={save}>{t('save')}</Button>
   </Paper>;

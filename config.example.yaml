@@ -1,8 +1,6 @@
 version: 1
 
-discovery:
-  # Use a read-only ACL restricted to ai-hub:monitor:instances and ai-hub:monitor:instance:*.
-  redis_url: ""
+# Instance discovery automatically reads the host Redis through the host API.
 
 metrics:
   username: ""
