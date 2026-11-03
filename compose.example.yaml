@@ -1,6 +1,6 @@
 services:
   monitor:
-    image: ctt-repository-cn-guangzhou.cr.volces.com/compute-power-zone/ai-hub-monitor:0.0.1
+    image: ctt-repository-cn-guangzhou.cr.volces.com/compute-power-zone/ai-hub-monitor:0.0.2
     build: .
     restart: unless-stopped
     user: "10001:10001"

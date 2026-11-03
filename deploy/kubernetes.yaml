@@ -50,7 +50,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: monitor
-          image: ctt-repository-cn-guangzhou.cr.volces.com/compute-power-zone/ai-hub-monitor:0.0.1
+          image: ctt-repository-cn-guangzhou.cr.volces.com/compute-power-zone/ai-hub-monitor:0.0.2
           env:
             - name: AIHUB_PLUGIN_CONFIG
               value: /run/aihub/config.yaml

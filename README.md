@@ -6,7 +6,7 @@
 
 一个发布物包含 Go 服务、React/MUI 页面和固定版本的 VictoriaMetrics。运行时由内部 supervisor 启停数据库；数据库仅监听 loopback，不发布其端口。父进程监督管道用于回收意外退出后留下的数据库进程，数据目录使用独占文件锁。运行时不下载二进制。
 
-0.0.1 的安装参数、POC 镜像和持久化配置见 [部署指南](DEPLOYMENT.md)。发布页：<https://github.com/blueskyxi3/minitor/releases/tag/0.0.1>。
+0.0.2 的安装参数、POC 镜像和持久化配置见 [部署指南](DEPLOYMENT.md)。发布页：<https://github.com/blueskyxi3/minitor/releases/tag/0.0.2>。
 
 ## 构建与安装
 
@@ -20,15 +20,15 @@ make build PLATFORM=linux-amd64
 make build PLATFORM=linux-arm64
 ```
 
-每次构建生成 `dist/<GOOS-GOARCH>/monitor` 和 `dist/monitor-0.0.1-<GOOS-GOARCH>.zip`。ZIP 只有程序、完整 Manifest 和 SDK 默认配置；前端、数据库、许可证已嵌入程序。解压总量受现有市场 150 MiB 限制。构建 macOS 包时执行 `make build PLATFORM=darwin-arm64`。
+每次构建生成 `dist/<GOOS-GOARCH>/monitor` 和 `dist/monitor-0.0.2-<GOOS-GOARCH>.zip`。ZIP 只有程序、完整 Manifest 和 SDK 默认配置；前端、数据库、许可证已嵌入程序。解压总量受现有市场 150 MiB 限制。构建 macOS 包时执行 `make build PLATFORM=darwin-arm64`。
 
 将 `catalog.example.json` 的定义添加到宿主后台的插件目录，通过已有 plugin-deployer 安装。本示例和 Release 附件 `catalog.json` 均使用公开的 GitHub Release ZIP 下载地址，master 可直接下载；也可改为 master 实际可读取的绝对路径。process 平台以部署器的 GOOS/GOARCH 为准。容器安装选择 docker/kubernetes，并提交实际可拉取的镜像地址、端口 `3013`、健康路径 `/healthz`。容器使用 UID/GID 10001，受管模式复用 `/data/plugin` 数据卷；Kubernetes 为单副本 Recreate。不要运行第二个副本共用同一数据库目录。
 
 ```sh
 # 在本仓库根目录执行。
-docker build -t ai-hub-monitor:0.0.1 .
+docker build -t ai-hub-monitor:0.0.2 .
 # 多架构：发布到自己的镜像仓库。
-docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/ai-hub-monitor:0.0.1 --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/ai-hub-monitor:0.0.2 --push .
 ```
 
 独立运行可参考 `compose.example.yaml` 和 `deploy/kubernetes.yaml`，然后在宿主登记 external 服务（无需改变插件清单）。Kubernetes 示例里的共享密钥必须替换。独立服务须与宿主双向可达，不能将容器的 localhost 当作宿主地址。镜像和 process 包均包含同一固定数据库版本。

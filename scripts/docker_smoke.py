@@ -9,7 +9,7 @@ import urllib.request
 import uuid
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--image", default="ai-hub-monitor:0.0.1")
+parser.add_argument("--image", default="ai-hub-monitor:0.0.2")
 args = parser.parse_args()
 prefix = "monitor-smoke-" + uuid.uuid4().hex[:10]
 volume, name, duplicate = prefix + "-data", prefix, prefix + "-duplicate"

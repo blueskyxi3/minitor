@@ -1,7 +1,7 @@
 {
   "id": "monitor",
   "name": "性能监控",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "sdk_version": 2,
   "extensions": ["console.navigation"],
   "entry": "/assets/plugin.js",
